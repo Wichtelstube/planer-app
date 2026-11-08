@@ -1,0 +1,958 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wichtelstube Belegungsplaner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --bordeaux:#9a2e37; --bordeaux-d:#7d222b; --rot:#b91a27; --gruen:#2f4a2e; --oliv:#6a6836;
+  --text:#0F172A; --muted:#5b6475; --bg:#fdf6f6; --card:#ffffff;
+  --line:rgba(154,46,55,.16); --tint:rgba(154,46,55,.07); --tint2:rgba(154,46,55,.12);
+  --ok:#2f7a3e; --warn:#c27a12; --err:#d11f2f;
+  --radius:14px; --shadow:0 1px 2px rgba(15,23,42,.05),0 6px 18px rgba(154,46,55,.06);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:Inter,system-ui,sans-serif;font-size:15px;color:var(--text);background:var(--bg);line-height:1.45}
+h1,h2,h3{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-weight:700;margin:0;color:var(--text)}
+h2{font-size:20px} h3{font-size:16px}
+button,input,select,textarea{font:inherit;color:inherit}
+.hero{background:linear-gradient(135deg,#fff 30%,#6a6836 66%,#9a2e37 82%,#b91a27 97%);padding:14px 20px}
+.hero-in{max-width:1280px;margin:0 auto;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.hero img{height:72px;width:auto;border-radius:10px;background:#fff;padding:4px 8px}
+.hero .ttl{display:flex;flex-direction:column}
+.hero .ttl h1{font-size:22px;color:var(--bordeaux)}
+.hero .ttl span{color:var(--gruen);font-size:13px}
+.hero .right{margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.92);font-size:13px;font-weight:500;border:1px solid rgba(255,255,255,.6);cursor:default}
+.pill.err{background:var(--err);color:#fff;cursor:pointer;animation:pulse 1.6s infinite}
+.pill.ok{color:var(--ok)}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(209,31,47,.5)}50%{box-shadow:0 0 0 6px rgba(209,31,47,0)}}
+nav.tabs{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+nav.tabs .in{max-width:1280px;margin:0 auto;display:flex;gap:2px;padding:0 12px;overflow-x:auto;align-items:center}
+nav.tabs button{background:none;border:0;padding:13px 14px;cursor:pointer;color:var(--gruen);font-weight:500;border-bottom:3px solid transparent;white-space:nowrap}
+nav.tabs button.on{color:var(--bordeaux);border-bottom-color:var(--bordeaux)}
+nav.tabs .filter{margin-left:auto;display:flex;align-items:center;gap:6px;padding:6px 0}
+nav.tabs .filter input{width:200px}
+main{max-width:1280px;margin:0 auto;padding:18px 16px 60px}
+section.tab{display:none} section.tab.on{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px;margin-bottom:16px}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--muted);font-weight:500}
+input[type=text],input[type=date],input[type=time],input[type=number],input[type=password],select,textarea{border:1px solid #d9d2d3;border-radius:9px;padding:7px 9px;background:#fff;min-height:36px}
+input:focus,select:focus,textarea:focus{outline:2px solid rgba(154,46,55,.35);border-color:var(--bordeaux)}
+.btn{background:var(--bordeaux);color:#fff;border:0;border-radius:9px;padding:8px 14px;cursor:pointer;font-weight:600;min-height:36px}
+.btn:hover{background:var(--bordeaux-d)}
+.btn.sec{background:#fff;color:var(--gruen);border:1px solid rgba(47,74,46,.35)}
+.btn.sec:hover{background:rgba(47,74,46,.06)}
+.btn.ghost{background:none;color:var(--muted);border:0;padding:6px 8px;min-height:auto}
+.btn.ghost:hover{color:var(--bordeaux)}
+.btn.sm{padding:5px 10px;min-height:30px;font-size:13px}
+.days{display:flex;gap:4px;flex-wrap:wrap}
+.days label{display:inline-flex;align-items:center;justify-content:center;width:36px;height:34px;border:1px solid #d9d2d3;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);user-select:none}
+.days input{display:none}
+.days label.on{background:var(--gruen);border-color:var(--gruen);color:#fff}
+.muted{color:var(--muted);font-size:13px}
+.small{font-size:12.5px}
+.hint{background:var(--tint);border-left:3px solid var(--oliv);padding:8px 12px;border-radius:8px;font-size:13px;color:#3d3d2a}
+.alert{border-radius:12px;padding:12px 14px;margin-bottom:12px;border:1px solid}
+.alert.err{background:#fff0f1;border-color:#f3b3b9;color:#7d1019}
+.alert.ok{background:#eff8f0;border-color:#b9dcc0;color:#1f5a2b}
+.alert.warn{background:#fff7e8;border-color:#f0d29a;color:#6b4508}
+.alert h3{color:inherit;font-size:15px;margin-bottom:4px}
+.conf{border:1px solid #f3b3b9;background:#fff;border-radius:10px;padding:9px 12px;margin:8px 0}
+.conf b{color:var(--err)}
+.conf details summary{cursor:pointer;color:var(--muted);font-size:12.5px;margin-top:4px}
+.dot{display:inline-block;width:11px;height:11px;border-radius:50%;vertical-align:middle;margin-right:6px}
+/* Kinder */
+.kids{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:14px}
+.kid{border:1px solid var(--line);border-radius:12px;background:#fff;padding:12px 14px;border-left:6px solid var(--c,#999)}
+.kid.bad{box-shadow:0 0 0 2px var(--err) inset}
+.kid .hd{display:flex;align-items:center;gap:8px}
+.kid .hd h3{flex:1}
+.rules{width:100%;border-collapse:collapse;margin-top:8px;font-size:13.5px}
+.rules td{padding:5px 4px;border-top:1px solid #f0e6e7;vertical-align:middle}
+.rules tr.past td{color:#9aa0aa}
+.badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 7px;border-radius:999px;background:var(--tint2);color:var(--bordeaux)}
+.badge.g{background:rgba(47,74,46,.1);color:var(--gruen)}
+.badge.r{background:var(--err);color:#fff}
+.editor{background:#fbf8f8;border:1px dashed rgba(154,46,55,.3);border-radius:12px;padding:12px;margin-top:10px}
+/* Woche */
+.week-day{margin-bottom:14px}
+.wd-h{display:flex;align-items:baseline;gap:10px;margin-bottom:4px}
+.wd-h h3{font-size:15px}
+.tl{position:relative;border:1px solid #eee3e4;border-radius:10px;background:#fff;overflow:hidden}
+.tl .axis{position:relative;height:20px;border-bottom:1px solid #f0e6e7;font-size:11px;color:var(--muted)}
+.tl .axis span{position:absolute;top:3px;transform:translateX(-50%)}
+.tl .grid{position:absolute;top:0;bottom:0;border-left:1px solid #f4ecec}
+.tl .lane{position:relative;height:26px}
+.tl .bar{position:absolute;top:3px;height:20px;border-radius:6px;color:#fff;font-size:11.5px;font-weight:600;padding:2px 7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tl .bar.own{background:repeating-linear-gradient(45deg,#8a8640,#8a8640 6px,#9c9850 6px,#9c9850 12px)}
+.tl .occ{position:relative;height:22px;border-top:1px solid #f0e6e7;background:#fbfafa}
+.tl .occ div{position:absolute;top:0;bottom:0;font-size:10.5px;text-align:center;line-height:22px;color:#fff;font-weight:600}
+.tl .overlay{position:absolute;top:20px;bottom:0;background:repeating-linear-gradient(-45deg,rgba(209,31,47,.18),rgba(209,31,47,.18) 6px,rgba(209,31,47,.05) 6px,rgba(209,31,47,.05) 12px);border-left:2px solid var(--err);border-right:2px solid var(--err);pointer-events:none}
+.closed{padding:10px 12px;color:var(--muted);background:repeating-linear-gradient(45deg,#f6f2f2,#f6f2f2 8px,#fff 8px,#fff 16px);border-radius:10px;font-size:13px}
+/* Matrix */
+.mx{overflow-x:auto}
+.mx table{border-collapse:separate;border-spacing:2px;font-size:11px}
+.mx td,.mx th{min-width:26px;height:28px;text-align:center;border-radius:5px}
+.mx th{font-weight:500;color:var(--muted);font-size:10.5px}
+.mx td.l{font-weight:700;text-align:left;padding-right:8px;color:var(--text);font-size:13px;min-width:34px}
+.f0{background:#d11f2f;color:#fff}.f1{background:#e9a23b;color:#fff}.f2{background:#a9cf9a;color:#173d17}.f3{background:#5d9a5b;color:#fff}.fx{background:#eee;color:#aaa}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted);align-items:center}
+.legend i{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:middle;margin-right:4px}
+table.list{width:100%;border-collapse:collapse;font-size:13.5px}
+table.list th{text-align:left;color:var(--muted);font-weight:500;font-size:12px;border-bottom:1px solid var(--line);padding:6px}
+table.list td{padding:6px;border-bottom:1px solid #f3eaea}
+table.list tr.cl td{color:#9aa0aa;background:#faf7f7}
+table.list tr.ov td{background:#fff0f1}
+.sum{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0}
+.sum div{background:var(--tint);border-radius:10px;padding:8px 12px;font-size:13px}
+.sum b{display:block;font-size:18px;font-family:"Plus Jakarta Sans",sans-serif;color:var(--bordeaux)}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;transition:opacity .25s;z-index:99;pointer-events:none;max-width:90vw}
+.toast.on{opacity:1}
+@media (max-width:640px){
+  .hero img{height:54px}.hero .ttl h1{font-size:18px}
+  nav.tabs .filter input{width:130px}
+  .kids{grid-template-columns:1fr}
+  .tl .occ div{font-size:0}
+}
+</style>
+</head>
+<body>
+<header class="hero"><div class="hero-in">
+  <img src="data:image/jpeg;base64,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" alt="Wichtelstube Eichenweg">
+  <div class="ttl"><h1>Belegungsplaner</h1><span>Kindertagespflege Wichtelstube · Volkertshausen</span></div>
+  <div class="right">
+    <span class="pill" id="syncPill">● lokal</span>
+    <span class="pill ok" id="warnPill">✓ keine Überbelegung</span>
+  </div>
+</div></header>
+
+<nav class="tabs"><div class="in">
+  <button data-tab="woche" class="on">Woche</button>
+  <button data-tab="kinder">Kinder &amp; Zeiten</button>
+  <button data-tab="frei">Freie Plätze</button>
+  <button data-tab="monat">Monat &amp; PDF</button>
+  <button data-tab="warn">Warnungen</button>
+  <button data-tab="einst">Einstellungen</button>
+  <div class="filter"><input type="text" id="filter" placeholder="Filter: Namen, z. B. Mia, Ben" title="Mehrere Namen mit Komma trennen"><button class="btn ghost" id="filterX" title="Filter löschen">✕</button></div>
+</div></nav>
+
+<main>
+<!-- WOCHE -->
+<section class="tab on" id="t-woche">
+  <div class="card">
+    <div class="row">
+      <button class="btn sec sm" id="wPrev">◀</button>
+      <label class="f">Woche mit Datum<input type="date" id="wDate"></label>
+      <button class="btn sec sm" id="wNext">▶</button>
+      <button class="btn ghost" id="wToday">heute</button>
+      <div style="margin-left:auto" class="legend">
+        <span><i style="background:#a9cf9a"></i>frei</span><span><i style="background:#5d9a5b"></i>1 Platz frei</span>
+        <span><i style="background:#e9a23b"></i>voll</span>
+        <span><i style="background:#d11f2f"></i>Überbelegung</span>
+      </div>
+    </div>
+    <h2 id="wTitle" style="margin-top:14px"></h2>
+    <div class="muted small" id="wSub"></div>
+  </div>
+  <div id="wBody"></div>
+</section>
+
+<!-- KINDER -->
+<section class="tab" id="t-kinder">
+  <div class="card">
+    <h2>Kind anlegen</h2>
+    <div class="row" style="margin-top:10px">
+      <label class="f">Vorname<input type="text" id="kName" placeholder="z. B. Mia"></label>
+      <label class="f">Farbe<input type="color" id="kColor" style="width:60px;height:36px;padding:2px"></label>
+      <label class="f" style="flex:1;min-width:200px">Notiz (optional)<input type="text" id="kNote" placeholder="z. B. Eingewöhnung ab 15.02."></label>
+      <button class="btn" id="kAdd">+ Kind anlegen</button>
+    </div>
+    <p class="muted small" style="margin:10px 0 0">Danach am Kind „+ Zeitregel“ anlegen. Pro Kind beliebig viele Regeln (z. B. unterschiedliche Zeiten je Wochentag oder Zeitraum).</p>
+  </div>
+  <div class="kids" id="kList"></div>
+</section>
+
+<!-- FREIE PLÄTZE -->
+<section class="tab" id="t-frei">
+  <div class="card">
+    <h2>Anfrage prüfen: Ist Betreuung möglich?</h2>
+    <p class="muted small" style="margin:6px 0 12px">Gewünschte Zeiten eintragen, z. B. <b>Mo-Mi 7:00-12:30; Do 7:00-14:00</b>. Das Planungstool prüft jeden Tag im Zeitraum gegen die Grenze.</p>
+    <div class="row">
+      <label class="f" style="flex:1;min-width:240px">Wunschzeiten<input type="text" id="rqText" placeholder="Mo-Mi 7:00-12:30"></label>
+      <label class="f">ab<input type="date" id="rqFrom"></label>
+      <label class="f">bis (Prüfhorizont)<input type="date" id="rqTo"></label>
+      <button class="btn" id="rqGo">Prüfen</button>
+    </div>
+    <div id="rqParsed" class="muted small" style="margin-top:6px"></div>
+    <div id="rqOut" style="margin-top:12px"></div>
+  </div>
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <div><h2>Freie Plätze je Wochentag und Uhrzeit</h2>
+      <div class="muted small">Minimum an freien Plätzen über alle Tage im Zeitraum (Schließtage ausgenommen). Grenze inkl. eigener Kinder laut Einstellungen.</div></div>
+      <div class="row">
+        <label class="f">von<input type="date" id="mxFrom"></label>
+        <label class="f">bis<input type="date" id="mxTo"></label>
+        <button class="btn sec" id="mxGo">Aktualisieren</button>
+      </div>
+    </div>
+    <div class="legend" style="margin:12px 0">
+      <span><i class="f0"></i>0 frei</span><span><i class="f1"></i>1 frei</span><span><i class="f2"></i>2 frei</span><span><i class="f3"></i>3+ frei</span><span><i class="fx"></i>geschlossen/keine Tage</span>
+    </div>
+    <div class="mx" id="mxOut"></div>
+    <div id="mxText" style="margin-top:12px"></div>
+  </div>
+</section>
+
+<!-- MONAT -->
+<section class="tab" id="t-monat">
+  <div class="card">
+    <div class="row">
+      <label class="f">Monat<input type="month" id="mMonth" style="border:1px solid #d9d2d3;border-radius:9px;padding:7px 9px;min-height:36px"></label>
+      <button class="btn" id="mPdf">PDF erzeugen (A4 quer)</button>
+      <span class="muted small">Der Namensfilter oben bestimmt, welche Kinder als Spalten erscheinen. Die Belegung zählt immer alle Kinder.</span>
+    </div>
+  </div>
+  <div class="card"><div id="mSum" class="sum"></div><div style="overflow-x:auto"><table class="list" id="mTable"></table></div></div>
+</section>
+
+<!-- WARNUNGEN -->
+<section class="tab" id="t-warn">
+  <div class="card">
+    <h2>Überbelegungen &amp; Hinweise</h2>
+    <p class="muted small" id="warnRange" style="margin:4px 0 10px"></p>
+    <div id="warnBody"></div>
+  </div>
+</section>
+
+<!-- EINSTELLUNGEN -->
+<section class="tab" id="t-einst">
+  <div class="grid2">
+    <div class="card">
+      <h2>Grenzen (Pflegeerlaubnis)</h2>
+      <div class="row" style="margin-top:10px">
+        <label class="f">max. gleichzeitig<input type="number" min="1" max="9" id="sMax"></label>
+        <label class="f">max. Betreuungsverhältnisse<input type="number" min="1" max="15" id="sVert"></label>
+      </div>
+      <p class="hint" style="margin-top:12px">VwV Kindertagespflege BW Nr. 1.2 b: höchstens <b>5 fremde Kinder gleichzeitig</b> und höchstens <b>10 Betreuungsverhältnisse</b> je Tagespflegeperson. Die Pflegeerlaubnis kann weniger festlegen. Eigene Kinder zählen nur mit, wenn die Erlaubnis das vorsieht.</p>
+      <h3 style="margin-top:14px">Eigene Kinder</h3>
+      <div class="row" style="margin-top:8px">
+        <label class="f">Anzahl<input type="number" min="0" max="9" id="sOwn" style="width:90px"></label>
+        <label class="f">von<input type="time" id="sOwnS"></label>
+        <label class="f">bis<input type="time" id="sOwnE"></label>
+        <label class="f" style="flex-direction:row;align-items:center;gap:6px;color:var(--text)"><input type="checkbox" id="sOwnCount"> zählen zur Grenze mit</label>
+      </div>
+      <div style="margin-top:8px"><div class="muted small" style="margin-bottom:4px">anwesend an</div><div class="days" id="sOwnDays"></div></div>
+      <div class="row" style="margin-top:8px">
+        <label class="f">gilt ab (optional)<input type="date" id="sOwnFrom"></label>
+        <label class="f">gilt bis (optional)<input type="date" id="sOwnTo"></label>
+      </div>
+      <h3 style="margin-top:14px">Anzeige</h3>
+      <div class="row" style="margin-top:8px">
+        <label class="f">Tag von<input type="time" id="sDayS"></label>
+        <label class="f">Tag bis<input type="time" id="sDayE"></label>
+        <label class="f" style="flex-direction:row;align-items:center;gap:6px;color:var(--text)"><input type="checkbox" id="sHol"> Feiertage BW = geschlossen</label>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Schließzeiten / Urlaub</h2>
+      <div class="row" style="margin-top:10px">
+        <label class="f">von<input type="date" id="zFrom"></label>
+        <label class="f">bis<input type="date" id="zTo"></label>
+        <label class="f" style="flex:1;min-width:140px">Bezeichnung<input type="text" id="zTitle" placeholder="z. B. Sommerferien"></label>
+        <button class="btn sec" id="zAdd">+ hinzufügen</button>
+      </div>
+      <table class="list" id="zList" style="margin-top:10px"></table>
+    </div>
+    <div class="card">
+      <h2>GitHub-Synchronisation</h2>
+      <p class="muted small" style="margin:4px 0 10px">Daten liegen als JSON im <b>privaten</b> Repository. Der Token wird nur in diesem Browser gespeichert, nie im Repository.</p>
+      <div class="row">
+        <label class="f">Besitzer (User/Organisation)<input type="text" id="gOwner" placeholder="Wichtelstube"></label>
+        <label class="f">Repository<input type="text" id="gRepo" placeholder="Wichtelstube_Planer"></label>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <label class="f">Branch<input type="text" id="gBranch" placeholder="main" style="width:110px"></label>
+        <label class="f" style="flex:1">Dateipfad<input type="text" id="gPath" placeholder="daten/belegung.json"></label>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <label class="f" style="flex:1">Token (fine-grained, Contents: Read and write)<input type="password" id="gToken" placeholder="github_pat_…" autocomplete="off"></label>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <label class="f" style="flex-direction:row;align-items:center;gap:6px;color:var(--text)"><input type="checkbox" id="gAuto"> automatisch speichern</label>
+        <button class="btn sec sm" id="gTest">Verbindung testen</button>
+        <button class="btn sec sm" id="gLoad">Von GitHub laden</button>
+        <button class="btn sm" id="gSave">Auf GitHub speichern</button>
+      </div>
+      <div id="gMsg" class="small" style="margin-top:8px"></div>
+    </div>
+    <div class="card">
+      <h2>Daten</h2>
+      <div class="row" style="margin-top:10px">
+        <button class="btn sec sm" id="dExp">JSON exportieren</button>
+        <label class="btn sec sm" style="display:inline-flex;align-items:center">JSON importieren<input type="file" id="dImp" accept=".json,application/json" style="display:none"></label>
+        <button class="btn sec sm" id="dDemo">Beispieldaten laden</button>
+        <button class="btn ghost" id="dReset">Alles löschen</button>
+      </div>
+      <p class="muted small" id="dInfo" style="margin-top:10px"></p>
+    </div>
+  </div>
+</section>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+const LOGO = document.querySelector('.hero img').src;
+const WD = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+const WD_LONG = ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
+const WD_ORDER = [1,2,3,4,5,6,0];
+const MONATE = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+const PALETTE = ['#4f7a4d','#3f7f86','#c08a2e','#7a4f86','#4a6fa5','#8a5a3c','#6f9a7a','#5b6475','#b06a7a','#8a8640','#2f5e8a','#a0522d'];
+const LS_DATA='wichtelstube.daten.v1', LS_GH='wichtelstube.github.v1', LS_META='wichtelstube.meta.v1';
+
+/* ---------- Helpers ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Math.random().toString(36).slice(2,9);
+const pad = n => String(n).padStart(2,'0');
+const toMin = t => { if(!t) return 0; const [h,m]=t.split(':').map(Number); return h*60+(m||0); };
+const fmtMin = m => pad(Math.floor(m/60))+':'+pad(m%60);
+const iso = d => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const parseISO = s => { const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); };
+const addDays = (s,n) => { const d=parseISO(s); d.setDate(d.getDate()+n); return iso(d); };
+const addMonths = (s,n) => { const d=parseISO(s); d.setMonth(d.getMonth()+n); return iso(d); };
+const de = s => { if(!s) return ''; const [y,m,d]=s.split('-'); return d+'.'+m+'.'+y; };
+const deShort = s => { const [y,m,d]=s.split('-'); return d+'.'+m+'.'; };
+const today = () => iso(new Date());
+const mondayOf = s => { const d=parseISO(s); const w=(d.getDay()+6)%7; d.setDate(d.getDate()-w); return iso(d); };
+function toast(msg,ms=2600){ const t=$('#toast'); t.textContent=msg; t.classList.add('on'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('on'),ms); }
+function hexToRgb(h){ h=h.replace('#',''); return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)]; }
+function daysText(tage){
+  const ord = WD_ORDER.filter(d=>tage.includes(d));
+  const idx = ord.map(d=>WD_ORDER.indexOf(d));
+  const parts=[]; let i=0;
+  while(i<idx.length){ let j=i; while(j+1<idx.length && idx[j+1]===idx[j]+1) j++;
+    parts.push(j-i>=2 ? WD[WD_ORDER[idx[i]]]+'–'+WD[WD_ORDER[idx[j]]] : idx.slice(i,j+1).map(k=>WD[WD_ORDER[k]]).join(', '));
+    i=j+1; }
+  return parts.join(', ');
+}
+
+/* ---------- Feiertage Baden-Württemberg ---------- */
+const _holCache={};
+function easter(y){ const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),mo=Math.floor((h+l-7*m+114)/31),da=((h+l-7*m+114)%31)+1; return iso(new Date(y,mo-1,da)); }
+function holidays(y){
+  if(_holCache[y]) return _holCache[y];
+  const e=easter(y), H={};
+  H[y+'-01-01']='Neujahr'; H[y+'-01-06']='Heilige Drei Könige'; H[addDays(e,-2)]='Karfreitag'; H[addDays(e,1)]='Ostermontag';
+  H[y+'-05-01']='Tag der Arbeit'; H[addDays(e,39)]='Christi Himmelfahrt'; H[addDays(e,50)]='Pfingstmontag'; H[addDays(e,60)]='Fronleichnam';
+  H[y+'-10-03']='Tag der Deutschen Einheit'; H[y+'-11-01']='Allerheiligen'; H[y+'-12-25']='1. Weihnachtstag'; H[y+'-12-26']='2. Weihnachtstag';
+  return _holCache[y]=H;
+}
+const holidayName = s => holidays(+s.slice(0,4))[s]||null;
+
+/* ---------- Daten ---------- */
+function defaultData(){ return { version:1, updated:null,
+  settings:{ maxGleichzeitig:5, maxVertraege:10, eigeneAnzahl:0, eigeneZaehlen:true, eigeneTage:[1,2,3,4,5], eigeneStart:'07:00', eigeneEnde:'17:00', eigeneAb:'', eigeneBis:'', tagStart:'06:30', tagEnde:'17:30', feiertage:true },
+  kinder:[], schliesszeiten:[] }; }
+function normalize(d){
+  const base=defaultData(); d=d&&typeof d==='object'?d:base;
+  d.settings=Object.assign(base.settings,d.settings||{});
+  d.kinder=Array.isArray(d.kinder)?d.kinder:[]; d.kinder.forEach(k=>{ k.id=k.id||uid(); k.regeln=Array.isArray(k.regeln)?k.regeln:[]; k.regeln.forEach(r=>{r.id=r.id||uid(); r.tage=(r.tage||[]).map(Number);}); });
+  d.schliesszeiten=Array.isArray(d.schliesszeiten)?d.schliesszeiten:[]; d.schliesszeiten.forEach(z=>z.id=z.id||uid());
+  return d;
+}
+let D;
+try{ D=normalize(JSON.parse(localStorage.getItem(LS_DATA)||'null')); }catch(e){ D=normalize(null); }
+let META; try{ META=JSON.parse(localStorage.getItem(LS_META)||'{}'); }catch(e){ META={}; }
+function saveMeta(){ try{ localStorage.setItem(LS_META,JSON.stringify(META)); }catch(e){} }
+let GH; try{ GH=JSON.parse(localStorage.getItem(LS_GH)||'{}'); }catch(e){ GH={}; }
+GH=Object.assign({owner:'Wichtelstube',repo:'Wichtelstube_Planer',branch:'main',path:'daten/belegung.json',token:'',auto:true},GH);
+if(!GH.owner) GH.owner='Wichtelstube'; if(!GH.repo) GH.repo='Wichtelstube_Planer';
+
+let dayCache=new Map(), warnCache=null;
+function invalidate(){ dayCache=new Map(); warnCache=null; }
+function commit(msg){
+  D.updated=new Date().toISOString();
+  try{ localStorage.setItem(LS_DATA,JSON.stringify(D)); }catch(e){}
+  META.dirty=true; saveMeta();
+  invalidate(); renderAll(); if(msg) toast(msg);
+  scheduleSync();
+}
+
+/* ---------- Kernberechnung ---------- */
+const ruleActive = (r,s) => r.von<=s && (!r.bis || s<=r.bis);
+function mergeIv(ivs){ ivs=ivs.filter(v=>v[1]>v[0]).sort((a,b)=>a[0]-b[0]); const out=[]; for(const v of ivs){ const l=out[out.length-1]; if(l&&v[0]<=l[1]) l[1]=Math.max(l[1],v[1]); else out.push([v[0],v[1]]);} return out; }
+function closedReason(s){
+  const z=D.schliesszeiten.find(z=>z.von<=s && s<=(z.bis||z.von));
+  if(z) return z.titel||'Schließzeit';
+  if(D.settings.feiertage){ const h=holidayName(s); if(h) return h; }
+  return null;
+}
+function ownActive(s,wd){
+  const S=D.settings; if(!(S.eigeneAnzahl>0)) return null;
+  if(!S.eigeneTage.includes(wd)) return null;
+  if(S.eigeneAb && s<S.eigeneAb) return null; if(S.eigeneBis && s>S.eigeneBis) return null;
+  const a=toMin(S.eigeneStart), b=toMin(S.eigeneEnde); if(b<=a) return null;
+  return {n:+S.eigeneAnzahl, iv:[a,b]};
+}
+/** extra: {rules:[{tage,start,ende}], von, bis} hypothetisches neues Kind */
+function computeDay(s, extra){
+  if(!extra && dayCache.has(s)) return dayCache.get(s);
+  const S=D.settings, wd=parseISO(s).getDay(), limit=+S.maxGleichzeitig;
+  const extraOn = extra && s>=extra.von && (!extra.bis || s<=extra.bis);
+  let contracts=D.kinder.filter(k=>k.regeln.some(r=>ruleActive(r,s))).length + (extraOn?1:0);
+  const closed=closedReason(s);
+  const res={s,wd,closed,contracts,contractsOver:contracts>+S.maxVertraege,kids:[],own:null,peak:0,peakFremd:0,over:[],total:null,limit};
+  if(!closed){
+    const fremd=new Uint8Array(1440), own=new Uint8Array(1440);
+    const list=D.kinder.map(k=>({k,ivs:mergeIv(k.regeln.filter(r=>ruleActive(r,s)&&r.tage.includes(wd)).map(r=>[toMin(r.start),toMin(r.ende)]))})).filter(x=>x.ivs.length);
+    if(extraOn){ const ivs=mergeIv(extra.rules.filter(r=>r.tage.includes(wd)).map(r=>[toMin(r.start),toMin(r.ende)])); if(ivs.length) list.push({k:{id:'_neu',name:'Anfrage',farbe:'#0F172A'},ivs,neu:true}); }
+    for(const x of list) for(const [a,b] of x.ivs) for(let m=a;m<b&&m<1440;m++) fremd[m]++;
+    const o=ownActive(s,wd); if(o){ for(let m=o.iv[0];m<o.iv[1]&&m<1440;m++) own[m]=o.n; res.own=o; }
+    const total=new Uint8Array(1440);
+    for(let m=0;m<1440;m++){ total[m]=fremd[m]+(S.eigeneZaehlen?own[m]:0); if(total[m]>res.peak) res.peak=total[m]; if(fremd[m]>res.peakFremd) res.peakFremd=fremd[m]; }
+    let m=0;
+    while(m<1440){
+      if(total[m]>limit || fremd[m]>limit){ let e=m, pk=0; while(e<1440 && (total[e]>limit||fremd[e]>limit)){ pk=Math.max(pk,total[e]); e++; }
+        const names=list.filter(x=>x.ivs.some(([a,b])=>a<e&&b>m)).map(x=>x.k.name);
+        const ownIn = res.own && res.own.iv[0]<e && res.own.iv[1]>m && S.eigeneZaehlen ? res.own.n : 0;
+        res.over.push({a:m,b:e,peak:pk,names,ids:list.filter(x=>x.ivs.some(([a,b])=>a<e&&b>m)).map(x=>x.k.id),own:ownIn,neu:list.some(x=>x.neu&&x.ivs.some(([a,b])=>a<e&&b>m))});
+        m=e; } else m++;
+    }
+    res.kids=list; res.total=total;
+  }
+  if(!extra) dayCache.set(s,res);
+  return res;
+}
+function horizon(){
+  const t=today(); let end=addMonths(t,18);
+  for(const k of D.kinder) for(const r of k.regeln) if(r.bis && r.bis>end) end=r.bis;
+  const cap=addMonths(t,36); if(end>cap) end=cap;
+  return {from:t,to:end};
+}
+function computeWarnings(){
+  if(warnCache) return warnCache;
+  const {from,to}=horizon(), groups=new Map(), vert=[], badIds=new Set(), days=new Set();
+  for(let s=from; s<=to; s=addDays(s,1)){
+    const r=computeDay(s);
+    for(const o of r.over){
+      const sig=o.a+'|'+o.b+'|'+o.peak+'|'+o.own+'|'+[...o.names].sort().join(',');
+      if(!groups.has(sig)) groups.set(sig,{...o,dates:[]});
+      groups.get(sig).dates.push(s); o.ids.forEach(i=>badIds.add(i)); days.add(s);
+    }
+    if(r.contractsOver){ days.add(s); const l=vert[vert.length-1]; if(l && l.to===addDays(s,-1) && l.n===r.contracts) l.to=s; else vert.push({from:s,to:s,n:r.contracts}); }
+  }
+  const g=[...groups.values()].sort((a,b)=>a.dates[0].localeCompare(b.dates[0])||a.a-b.a);
+  return warnCache={groups:g,vert,from,to,badIds,count:g.reduce((n,x)=>n+x.dates.length,0),days:days.size};
+}
+
+/* ---------- Eingabe-Parser ---------- */
+function parseDays(str){
+  const map={mo:1,di:2,mi:3,do:4,fr:5,sa:6,so:0}; const out=new Set();
+  const s=str.toLowerCase().replace(/\s+/g,'').replace(/–|—|bis/g,'-');
+  for(const part of s.split(/[,\/+&]|und/)){
+    if(!part) continue;
+    const m=part.match(/^(mo|di|mi|do|fr|sa|so)[a-z]*(?:-(mo|di|mi|do|fr|sa|so)[a-z]*)?$/); if(!m) return null;
+    if(m[2]){ let i=WD_ORDER.indexOf(map[m[1]]), j=WD_ORDER.indexOf(map[m[2]]); if(j<i) return null; for(let k=i;k<=j;k++) out.add(WD_ORDER[k]); } else out.add(map[m[1]]);
+  }
+  return out.size?[...out]:null;
+}
+function parseTime(h,m){ h=+h; m=m?+m:0; if(h>24||m>59) return null; return pad(h)+':'+pad(m); }
+/** "Mo-Mi 7:00-12:30; Do 7-14" -> [{tage,start,ende}] */
+function parseQuick(txt){
+  const res=[], errs=[];
+  for(const seg of String(txt||'').split(/[;\n]+/).map(x=>x.trim()).filter(Boolean)){
+    const m=seg.match(/^(.*?)\s*(\d{1,2})(?:[:.](\d{2}))?\s*(?:uhr)?\s*(?:-|–|—|bis)\s*(\d{1,2})(?:[:.](\d{2}))?\s*(?:uhr)?$/i);
+    if(!m){ errs.push(seg); continue; }
+    const tage=parseDays(m[1].replace(/[:,]$/,'')); const a=parseTime(m[2],m[3]), b=parseTime(m[4],m[5]);
+    if(!tage||!a||!b||toMin(b)<=toMin(a)){ errs.push(seg); continue; }
+    res.push({tage,start:a,ende:b});
+  }
+  return {rules:res,errs};
+}
+/** "01.03.-31.10." / "01.03.2027-31.10.2027" -> {von,bis} */
+function parseRange(txt){
+  const m=String(txt||'').trim().match(/^(\d{1,2})\.(\d{1,2})\.(\d{2,4})?\s*(?:-|–|bis)\s*(\d{1,2})\.(\d{1,2})\.(\d{2,4})?$/); if(!m) return null;
+  const y4=y=>y? (y.length===2?2000+ +y:+y):null; const t=new Date();
+  let y1=y4(m[3]), y2=y4(m[6]);
+  if(!y1&&!y2){ y1=t.getFullYear(); const end=new Date(y1, +m[5]-1, +m[4]); if(+m[5]<+m[2]||(+m[5]===+m[2]&&+m[4]<+m[1])) y2=y1+1; else y2=y1; if(new Date(y2,+m[5]-1,+m[4])<t){y1++;y2++;} }
+  else if(!y1) y1 = (+m[2]>+m[5]) ? y2-1 : y2; else if(!y2) y2 = (+m[5]<+m[2]) ? y1+1 : y1;
+  return {von:y1+'-'+pad(m[2])+'-'+pad(m[1]), bis:y2+'-'+pad(m[5])+'-'+pad(m[4])};
+}
+
+/* ---------- Filter ---------- */
+function filterTerms(){ return $('#filter').value.split(',').map(x=>x.trim().toLowerCase()).filter(Boolean); }
+function passFilter(k){ const t=filterTerms(); if(!t.length) return true; const n=k.name.toLowerCase(); return t.some(x=>n.includes(x)); }
+
+/* ---------- Tabs ---------- */
+let TAB='woche';
+document.querySelectorAll('nav.tabs button[data-tab]').forEach(b=>b.onclick=()=>{ TAB=b.dataset.tab; document.querySelectorAll('nav.tabs button[data-tab]').forEach(x=>x.classList.toggle('on',x===b)); document.querySelectorAll('section.tab').forEach(s=>s.classList.toggle('on',s.id==='t-'+TAB)); renderTab(); try{localStorage.setItem('wichtelstube.tab',TAB);}catch(e){} });
+function renderAll(){ renderHeader(); renderTab(); }
+function renderTab(){ ({woche:renderWeek,kinder:renderKids,frei:renderFree,monat:renderMonth,warn:renderWarn,einst:renderSettings})[TAB](); }
+function renderHeader(){
+  const w=computeWarnings(), p=$('#warnPill');
+  const n=w.groups.length+w.vert.length;
+  if(n){ p.className='pill err'; p.textContent='⚠ Überbelegung an '+w.days+(w.days===1?' Tag':' Tagen'); }
+  else { p.className='pill ok'; p.textContent='✓ keine Überbelegung'; }
+  p.onclick=()=>n&&document.querySelector('nav.tabs button[data-tab=warn]').click();
+}
+
+/* ---------- Timeline-Darstellung ---------- */
+function dayRange(results){
+  let a=toMin(D.settings.tagStart), b=toMin(D.settings.tagEnde);
+  for(const r of results){ for(const x of r.kids) for(const [s,e] of x.ivs){ a=Math.min(a,s); b=Math.max(b,e);} if(r.own){a=Math.min(a,r.own.iv[0]); b=Math.max(b,r.own.iv[1]);} }
+  a=Math.floor(a/60)*60; b=Math.ceil(b/60)*60; if(b<=a) b=a+60; return [a,b];
+}
+function occColor(n,limit){ if(n===0) return null; if(n>limit) return '#d11f2f'; if(n===limit) return '#e9a23b'; if(n===limit-1) return '#5d9a5b'; return '#a9cf9a'; }
+function timelineHTML(r,[A,B],opts={}){
+  const pct=m=>((m-A)/(B-A)*100).toFixed(3)+'%', w=(a,b)=>((b-a)/(B-A)*100).toFixed(3)+'%';
+  let h='<div class="tl"><div class="axis">';
+  for(let m=A;m<=B;m+=60){ h+=`<span style="left:${pct(m)};${m===A?'transform:none;margin-left:3px':m===B?'transform:translateX(-100%);margin-left:-3px':''}">${m/60}</span>`; }
+  h+='</div>';
+  for(let m=A+60;m<B;m+=60) h+=`<div class="grid" style="left:${pct(m)}"></div>`;
+  const kids=r.kids.filter(x=>x.neu||passFilter(x.k));
+  for(const x of kids){ h+='<div class="lane">'; for(const [a,b] of x.ivs) h+=`<div class="bar" title="${esc(x.k.name)} ${fmtMin(a)}–${fmtMin(b)}" style="left:${pct(a)};width:${w(a,b)};background:${x.neu?'repeating-linear-gradient(45deg,#0F172A,#0F172A 6px,#334 6px,#334 12px)':esc(x.k.farbe)}">${esc(x.k.name)} · ${fmtMin(a)}–${fmtMin(b)}</div>`; h+='</div>'; }
+  if(r.own) h+=`<div class="lane"><div class="bar own" style="left:${pct(r.own.iv[0])};width:${w(...r.own.iv)}">Eigene (${r.own.n})${D.settings.eigeneZaehlen?'':' · zählen nicht'} · ${fmtMin(r.own.iv[0])}–${fmtMin(r.own.iv[1])}</div></div>`;
+  if(!kids.length && !r.own) h+='<div class="lane"><span class="muted small" style="position:absolute;left:10px;top:4px">keine Betreuung'+(filterTerms().length?' (Filter aktiv)':'')+'</span></div>';
+  h+='<div class="occ">';
+  for(let m=A;m<B;m+=15){ let n=0; for(let k=m;k<m+15;k++) n=Math.max(n,r.total[k]); const c=occColor(n,r.limit); if(c) h+=`<div style="left:${pct(m)};width:${w(m,m+15)};background:${c};color:${c==='#a9cf9a'?'#173d17':'#fff'}" title="${fmtMin(m)}–${fmtMin(m+15)}: ${n} Kinder">${n}</div>`; }
+  h+='</div>';
+  for(const o of r.over) h+=`<div class="overlay" style="left:${pct(Math.max(o.a,A))};width:${w(Math.max(o.a,A),Math.min(o.b,B))}" title="Überbelegung ${fmtMin(o.a)}–${fmtMin(o.b)}: ${o.peak} Kinder"></div>`;
+  return h+'</div>';
+}
+
+/* ---------- Woche ---------- */
+function renderWeek(){
+  if(!$('#wDate').value) $('#wDate').value=today();
+  const mon=mondayOf($('#wDate').value);
+  const days=[0,1,2,3,4,5,6].map(i=>addDays(mon,i));
+  const res=days.map(s=>computeDay(s));
+  const showWE=res.slice(5).some(r=>!r.closed&&(r.kids.length));
+  const shown=res.filter((r,i)=>i<5||showWE);
+  const rng=dayRange(shown.filter(r=>!r.closed));
+  const kw=isoWeek(parseISO(mon));
+  $('#wTitle').textContent=`KW ${kw} · ${de(mon)} – ${de(addDays(mon,showWE?6:4))}`;
+  const ov=shown.filter(r=>r.over.length).length;
+  $('#wSub').innerHTML=`Grenze: max. ${D.settings.maxGleichzeitig} gleichzeitig${D.settings.eigeneAnzahl>0?(D.settings.eigeneZaehlen?' inkl. '+D.settings.eigeneAnzahl+' eigene':' (eigene Kinder zählen nicht)'):''} · max. ${D.settings.maxVertraege} Verträge`+(ov?` · <b style="color:var(--err)">${ov} Tag(e) mit Überbelegung</b>`:'');
+  let h='';
+  for(const r of shown){
+    h+=`<div class="card week-day"><div class="wd-h"><h3>${WD_LONG[r.wd]}, ${de(r.s)}</h3>`;
+    if(!r.closed) h+=`<span class="badge g">max. ${r.peak} gleichzeitig</span> <span class="badge ${r.contractsOver?'r':'g'}">${r.contracts} Verträge</span>`;
+    if(r.over.length) h+=` <span class="badge r">⚠ Überbelegung ${r.over.map(o=>fmtMin(o.a)+'–'+fmtMin(o.b)).join(', ')}</span>`;
+    h+='</div>';
+    h+= r.closed ? `<div class="closed">geschlossen · ${esc(r.closed)}</div>` : timelineHTML(r,rng);
+    h+='</div>';
+  }
+  $('#wBody').innerHTML=h;
+}
+function isoWeek(d){ const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())); const n=t.getUTCDay()||7; t.setUTCDate(t.getUTCDate()+4-n); const y=new Date(Date.UTC(t.getUTCFullYear(),0,1)); return Math.ceil(((t-y)/864e5+1)/7); }
+$('#wPrev').onclick=()=>{ $('#wDate').value=addDays($('#wDate').value||today(),-7); renderWeek(); };
+$('#wNext').onclick=()=>{ $('#wDate').value=addDays($('#wDate').value||today(),7); renderWeek(); };
+$('#wToday').onclick=()=>{ $('#wDate').value=today(); renderWeek(); };
+$('#wDate').onchange=renderWeek;
+
+/* ---------- Kinder ---------- */
+let editing=null; // {kid, rule|null}
+function nextColor(){ const used=D.kinder.map(k=>k.farbe); return PALETTE.find(c=>!used.includes(c))||PALETTE[D.kinder.length%PALETTE.length]; }
+$('#kColor').value=PALETTE[0];
+$('#kAdd').onclick=()=>{
+  const name=$('#kName').value.trim(); if(!name) return toast('Bitte Vornamen eingeben');
+  const k={id:uid(),name,farbe:$('#kColor').value,notiz:$('#kNote').value.trim(),regeln:[]};
+  D.kinder.push(k); $('#kName').value=''; $('#kNote').value=''; editing={kid:k.id,rule:null};
+  commit(name+' angelegt – jetzt Zeitregel eintragen'); $('#kColor').value=nextColor();
+};
+function ruleEditorHTML(k,r){
+  const tage=r?r.tage:[1,2,3,4,5];
+  return `<div class="editor" data-kid="${k.id}" data-rule="${r?r.id:''}">
+   <div class="row"><label class="f" style="flex:1;min-width:200px">Schnelleingabe (Tage + Zeit)<input type="text" class="eQuick" placeholder="Mo-Mi 7:00-12:30; Do 7-14" value="${r?esc(daysText(r.tage)+' '+r.start+'-'+r.ende):''}"></label>
+   <label class="f">Zeitraum (Schnelleingabe)<input type="text" class="eRange" placeholder="01.03.-31.10." style="width:150px"></label></div>
+   <div class="row" style="margin-top:8px">
+    <label class="f">gilt ab<input type="date" class="eFrom" value="${r?r.von:today()}"></label>
+    <label class="f">gilt bis<input type="date" class="eTo" value="${r&&r.bis?r.bis:''}"></label>
+    <label class="f">von<input type="time" class="eS" value="${r?r.start:'07:00'}"></label>
+    <label class="f">bis<input type="time" class="eE" value="${r?r.ende:'12:30'}"></label>
+   </div>
+   <div style="margin-top:8px" class="days">${WD_ORDER.map(d=>`<label class="${tage.includes(d)?'on':''}"><input type="checkbox" value="${d}" ${tage.includes(d)?'checked':''}>${WD[d]}</label>`).join('')}</div>
+   <div class="muted small eInfo" style="margin-top:6px">„gilt bis“ leer = unbefristet. Mehrere Zeilen in der Schnelleingabe (mit ; getrennt) erzeugen mehrere Regeln.</div>
+   <div class="row" style="margin-top:8px"><button class="btn sm eOk">${r?'Regel speichern':'Regel hinzufügen'}</button><button class="btn sec sm eCancel">Abbrechen</button></div></div>`;
+}
+function renderKids(){
+  const w=computeWarnings(), t=today();
+  const ks=D.kinder.filter(passFilter);
+  if(!D.kinder.length){ $('#kList').innerHTML='<div class="card muted">Noch keine Kinder angelegt.</div>'; return; }
+  $('#kList').innerHTML=ks.map(k=>{
+    const bad=w.badIds.has(k.id);
+    const active=k.regeln.some(r=>ruleActive(r,t));
+    const rules=[...k.regeln].sort((a,b)=>a.von.localeCompare(b.von)).map(r=>`<tr class="${r.bis&&r.bis<t?'past':''}"><td><b>${esc(daysText(r.tage))}</b></td><td>${r.start}–${r.ende}</td><td>${de(r.von)} – ${r.bis?de(r.bis):'offen'}</td>
+      <td style="text-align:right;white-space:nowrap"><button class="btn ghost" data-act="edit" data-kid="${k.id}" data-rule="${r.id}" title="bearbeiten">✎</button><button class="btn ghost" data-act="copy" data-kid="${k.id}" data-rule="${r.id}" title="duplizieren">⧉</button><button class="btn ghost" data-act="delr" data-kid="${k.id}" data-rule="${r.id}" title="löschen">🗑</button></td></tr>`).join('');
+    const ed = editing&&editing.kid===k.id ? ruleEditorHTML(k, editing.rule?k.regeln.find(r=>r.id===editing.rule):null) : '';
+    return `<div class="kid ${bad?'bad':''}" style="--c:${esc(k.farbe)}"><div class="hd"><span class="dot" style="background:${esc(k.farbe)}"></span><h3>${esc(k.name)}</h3>
+      ${bad?'<span class="badge r">⚠ Überbelegung</span>':''}${active?'<span class="badge g">aktiv</span>':''}
+      <input type="color" value="${esc(k.farbe)}" data-act="color" data-kid="${k.id}" title="Farbe" style="width:30px;height:26px;border:0;background:none;padding:0">
+      <button class="btn ghost" data-act="ren" data-kid="${k.id}" title="umbenennen">✎</button><button class="btn ghost" data-act="delk" data-kid="${k.id}" title="Kind löschen">🗑</button></div>
+      ${k.notiz?`<div class="muted small">${esc(k.notiz)}</div>`:''}
+      <table class="rules">${rules||'<tr><td class="muted">noch keine Zeitregel</td></tr>'}</table>
+      ${ed || `<button class="btn sec sm" style="margin-top:8px" data-act="addr" data-kid="${k.id}">+ Zeitregel</button>`}</div>`;
+  }).join('') || '<div class="card muted">Kein Kind passt zum Filter.</div>';
+  bindEditor();
+}
+$('#kList').addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]'); if(!b||b.dataset.act==='color') return;
+  const k=D.kinder.find(x=>x.id===b.dataset.kid); if(!k) return;
+  const act=b.dataset.act;
+  if(act==='addr'){ editing={kid:k.id,rule:null}; renderKids(); }
+  if(act==='edit'){ editing={kid:k.id,rule:b.dataset.rule}; renderKids(); }
+  if(act==='copy'){ const r=k.regeln.find(r=>r.id===b.dataset.rule); k.regeln.push({...r,id:uid(),tage:[...r.tage]}); editing={kid:k.id,rule:k.regeln[k.regeln.length-1].id}; commit('Regel dupliziert'); }
+  if(act==='delr'){ if(confirm('Regel löschen?')){ k.regeln=k.regeln.filter(r=>r.id!==b.dataset.rule); commit('Regel gelöscht'); } }
+  if(act==='delk'){ if(confirm(k.name+' mit allen Regeln löschen?')){ D.kinder=D.kinder.filter(x=>x!==k); commit(k.name+' gelöscht'); } }
+  if(act==='ren'){ const n=prompt('Neuer Vorname',k.name); if(n&&n.trim()){ k.name=n.trim(); commit(); } }
+});
+$('#kList').addEventListener('change',e=>{ const b=e.target; if(b.dataset&&b.dataset.act==='color'){ const k=D.kinder.find(x=>x.id===b.dataset.kid); k.farbe=b.value; commit(); } });
+function bindEditor(){
+  const ed=document.querySelector('.editor'); if(!ed) return;
+  ed.querySelectorAll('.days label').forEach(l=>l.querySelector('input').onchange=ev=>l.classList.toggle('on',ev.target.checked));
+  const q=ed.querySelector('.eQuick'), info=ed.querySelector('.eInfo');
+  q.oninput=()=>{ const p=parseQuick(q.value); if(p.rules.length===1){ const r=p.rules[0]; ed.querySelector('.eS').value=r.start; ed.querySelector('.eE').value=r.ende; ed.querySelectorAll('.days input').forEach(i=>{ i.checked=r.tage.includes(+i.value); i.parentNode.classList.toggle('on',i.checked); }); }
+    info.innerHTML = p.errs.length? `<span style="color:var(--err)">nicht erkannt: ${esc(p.errs.join(' | '))}</span>` : p.rules.length>1? `${p.rules.length} Regeln erkannt: ${p.rules.map(r=>esc(daysText(r.tage)+' '+r.start+'–'+r.ende)).join(' · ')}` : '„gilt bis“ leer = unbefristet.'; };
+  const rg=ed.querySelector('.eRange'); rg.oninput=()=>{ const r=parseRange(rg.value); if(r){ ed.querySelector('.eFrom').value=r.von; ed.querySelector('.eTo').value=r.bis; rg.style.borderColor='var(--ok)'; } else rg.style.borderColor=rg.value?'var(--err)':''; };
+  ed.querySelector('.eCancel').onclick=()=>{ editing=null; renderKids(); };
+  ed.querySelector('.eOk').onclick=()=>{
+    const k=D.kinder.find(x=>x.id===ed.dataset.kid); const von=ed.querySelector('.eFrom').value, bis=ed.querySelector('.eTo').value;
+    if(!von) return toast('„gilt ab“ fehlt'); if(bis&&bis<von) return toast('„gilt bis“ liegt vor „gilt ab“');
+    const p=parseQuick(q.value);
+    let rules = p.rules.length>1 ? p.rules : [{tage:[...ed.querySelectorAll('.days input:checked')].map(i=>+i.value), start:ed.querySelector('.eS').value, ende:ed.querySelector('.eE').value}];
+    for(const r of rules){ if(!r.tage.length) return toast('Mindestens einen Wochentag wählen'); if(!r.start||!r.ende||toMin(r.ende)<=toMin(r.start)) return toast('Uhrzeit prüfen: Ende muss nach Beginn liegen'); }
+    const old=ed.dataset.rule;
+    if(old){ const i=k.regeln.findIndex(r=>r.id===old); k.regeln.splice(i,1,...rules.map((r,n)=>({id:n?uid():old,von,bis,...r}))); }
+    else k.regeln.push(...rules.map(r=>({id:uid(),von,bis,...r})));
+    editing=null; commit('Gespeichert');
+    const w=computeWarnings(); if(w.badIds.has(k.id)) toast('⚠ Achtung: '+k.name+' ist an einer Überbelegung beteiligt – siehe Warnungen',5000);
+  };
+}
+
+/* ---------- Freie Plätze ---------- */
+function renderFree(){
+  if(!$('#rqFrom').value) $('#rqFrom').value=today();
+  if(!$('#rqTo').value) $('#rqTo').value=addMonths(today(),12);
+  if(!$('#mxFrom').value) $('#mxFrom').value=today();
+  if(!$('#mxTo').value) $('#mxTo').value=addMonths(today(),3);
+  renderMatrix();
+}
+$('#rqText').oninput=()=>{ const p=parseQuick($('#rqText').value); $('#rqParsed').innerHTML= p.errs.length?`<span style="color:var(--err)">nicht erkannt: ${esc(p.errs.join(' | '))}</span>`: p.rules.map(r=>'✓ '+esc(daysText(r.tage)+' '+r.start+'–'+r.ende)).join(' · '); };
+$('#rqText').onkeydown=e=>{ if(e.key==='Enter') $('#rqGo').click(); };
+$('#rqGo').onclick=()=>{
+  const p=parseQuick($('#rqText').value); const von=$('#rqFrom').value, bis=$('#rqTo').value;
+  if(!p.rules.length||p.errs.length) return toast('Wunschzeiten nicht erkannt, Format z. B. „Mo-Mi 7:00-12:30“');
+  if(!von||!bis||bis<von) return toast('Zeitraum prüfen');
+  const extra={rules:p.rules,von,bis};
+  const bad=[], vbad=[]; let open=0;
+  for(let s=von;s<=bis;s=addDays(s,1)){
+    const r=computeDay(s,extra); if(r.closed) continue;
+    const req=r.kids.find(x=>x.neu); if(!req) continue; open++;
+    const ov=r.over.filter(o=>o.neu); if(ov.length) bad.push({s,ov,wd:r.wd});
+    if(r.contractsOver) vbad.push(s);
+  }
+  const last=[...bad.map(b=>b.s),...vbad].sort().pop();
+  const desc=p.rules.map(r=>daysText(r.tage)+' '+r.start+'–'+r.ende).join('; ');
+  let h='';
+  if(!open){ h=`<div class="alert warn"><h3>Keine Betreuungstage im Zeitraum</h3>Alle passenden Tage sind Schließtage oder die Wochentage kommen nicht vor.</div>`; }
+  else if(!bad.length && !vbad.length){ h=`<div class="alert ok"><h3>✓ Betreuung möglich ab ${de(von)}</h3>${esc(desc)} passt an allen ${open} Betreuungstagen bis ${de(bis)} ohne Überbelegung.</div>`; }
+  else{
+    const earliest = last && last<bis ? addDays(last,1) : null;
+    h=`<div class="alert err"><h3>✕ Nicht durchgehend möglich – ${bad.length+vbad.length} von ${open} Tagen kritisch</h3>`
+     + (earliest?`Frühester Start, ab dem bis ${de(bis)} alles passt: <b>${de(earliest)}</b>`:`Im Prüfzeitraum gibt es keinen konfliktfreien Starttermin.`)+`</div>`;
+    if(vbad.length) h+=`<div class="conf"><b>Mehr als ${D.settings.maxVertraege} Betreuungsverhältnisse</b> an ${vbad.length} Tagen (${de(vbad[0])} – ${de(vbad[vbad.length-1])})</div>`;
+    const grp=new Map();
+    for(const b of bad) for(const o of b.ov){ const sig=o.a+'|'+o.b+'|'+o.peak+'|'+o.names.filter(n=>n!=='Anfrage').sort().join(','); if(!grp.has(sig)) grp.set(sig,{...o,dates:[]}); grp.get(sig).dates.push(b.s); }
+    for(const g of grp.values()) h+=confHTML(g,true);
+  }
+  // Wochentags-Zusammenfassung freie Plätze im Wunschzeitfenster
+  $('#rqOut').innerHTML=h;
+};
+function confHTML(g,isReq){
+  const wds=[...new Set(g.dates.map(s=>parseISO(s).getDay()))]; const names=g.names.filter(n=>n!=='Anfrage');
+  return `<div class="conf"><b>${fmtMin(g.a)}–${fmtMin(g.b)} · ${g.peak} Kinder gleichzeitig</b> (Grenze ${D.settings.maxGleichzeitig})<br>
+    <span class="small">${isReq?'mit Anfrage + ':''}${esc(names.join(', '))}${g.own?` + ${g.own} eigene${g.own>1?'':'s'} Kind${g.own>1?'er':''}`:''}</span><br>
+    <span class="small muted">an ${g.dates.length} Tag${g.dates.length>1?'en':''} (${daysText(wds)}) · ${de(g.dates[0])}${g.dates.length>1?' – '+de(g.dates[g.dates.length-1]):''}</span>
+    ${g.dates.length>1?`<details><summary>alle Termine</summary><div class="small">${g.dates.map(s=>WD[parseISO(s).getDay()]+' '+de(s)).join(', ')}</div></details>`:''}</div>`;
+}
+function freeMatrix(from,to){
+  const S=D.settings, limit=+S.maxGleichzeitig;
+  const rngRes=[]; const per={}; WD_ORDER.forEach(d=>per[d]=null);
+  let minVert=Infinity;
+  for(let s=from;s<=to;s=addDays(s,1)){
+    const r=computeDay(s); if(r.closed) continue;
+    minVert=Math.min(minVert,+S.maxVertraege-r.contracts);
+    if((r.wd===6||r.wd===0)&&!r.kids.length) continue;
+    rngRes.push(r);
+    if(!per[r.wd]) per[r.wd]=new Int16Array(1440).fill(99);
+    for(let m=0;m<1440;m++){ const f=limit-r.total[m]; if(f<per[r.wd][m]) per[r.wd][m]=f; }
+  }
+  return {per,rng:dayRange(rngRes.length?rngRes:[]),minVert};
+}
+function renderMatrix(){
+  const from=$('#mxFrom').value, to=$('#mxTo').value; if(!from||!to||to<from){ $('#mxOut').innerHTML=''; return; }
+  const {per,rng:[A,B],minVert}=freeMatrix(from,to);
+  let h='<table><tr><th></th>'; for(let m=A;m<B;m+=30) h+=`<th colspan="2" style="text-align:left">${fmtMin(m)}</th>`; h+='</tr>';
+  const days=[1,2,3,4,5].concat([6,0].filter(d=>per[d]));
+  const txt=[];
+  for(const d of days){
+    h+=`<tr><td class="l">${WD[d]}</td>`;
+    const arr=per[d];
+    for(let m=A;m<B;m+=15){
+      if(!arr){ h+='<td class="fx">–</td>'; continue; }
+      let f=99; for(let k=m;k<m+15;k++) f=Math.min(f,arr[k]);
+      const c=f<=0?'f0':f===1?'f1':f===2?'f2':'f3';
+      h+=`<td class="${c}" title="${WD_LONG[d]} ${fmtMin(m)}–${fmtMin(m+15)}: ${Math.max(f,0)} frei">${f<0?'!':f}</td>`;
+    }
+    h+='</tr>';
+    if(arr){ // Textzusammenfassung
+      const segs=[]; let m=A; while(m<B){ const f=Math.max(0,Math.min(...arr.slice(m,m+15))); let e=m+15; while(e<B && Math.max(0,Math.min(...arr.slice(e,e+15)))===f) e+=15; segs.push(`${fmtMin(m)}–${fmtMin(e)}: <b>${f}</b>`); m=e; }
+      txt.push(`<tr><td><b>${WD_LONG[d]}</b></td><td>${segs.join(' · ')}</td></tr>`);
+    }
+  }
+  h+='</table>';
+  $('#mxOut').innerHTML=h;
+  $('#mxText').innerHTML=`<table class="list"><tr><th style="width:110px">Wochentag</th><th>freie Plätze (Minimum im Zeitraum)</th></tr>${txt.join('')}</table>
+   <p class="small" style="margin-top:8px">Freie Betreuungsverhältnisse (Verträge) im Zeitraum: <b>${isFinite(minVert)?Math.max(0,minVert):'–'}</b> von ${D.settings.maxVertraege}</p>`;
+}
+$('#mxGo').onclick=renderMatrix; $('#mxFrom').onchange=renderMatrix; $('#mxTo').onchange=renderMatrix;
+
+/* ---------- Monat ---------- */
+function monthDays(ym){ const [y,m]=ym.split('-').map(Number); const out=[]; const d=new Date(y,m-1,1); while(d.getMonth()===m-1){ out.push(iso(d)); d.setDate(d.getDate()+1);} return out; }
+function monthModel(ym){
+  const all=monthDays(ym).map(s=>computeDay(s));
+  const we=all.some(r=>(r.wd===6||r.wd===0)&&!r.closed&&r.kids.length);
+  const rows=all.filter(r=>we||(r.wd>=1&&r.wd<=5));
+  const kids=D.kinder.filter(passFilter).filter(k=>rows.some(r=>r.kids.some(x=>x.k.id===k.id)));
+  return {rows,kids,rng:dayRange(rows.filter(r=>!r.closed))};
+}
+function kidCell(r,k){ const x=r.kids.find(x=>x.k.id===k.id); return x? x.ivs.map(([a,b])=>fmtMin(a)+'–'+fmtMin(b)).join(', ') : ''; }
+function renderMonth(){
+  if(!$('#mMonth').value){ const t=new Date(); $('#mMonth').value=t.getFullYear()+'-'+pad(t.getMonth()+1); }
+  const ym=$('#mMonth').value, M=monthModel(ym);
+  const ov=M.rows.filter(r=>r.over.length), open=M.rows.filter(r=>!r.closed);
+  $('#mSum').innerHTML=`<div><b>${open.length}</b>Betreuungstage</div><div><b>${M.kids.length}</b>Kinder im Plan${filterTerms().length?' (gefiltert)':''}</div><div><b>${Math.max(0,...open.map(r=>r.peak))}</b>max. gleichzeitig</div><div style="${ov.length?'background:#fff0f1':''}"><b style="${ov.length?'color:var(--err)':''}">${ov.length}</b>Tage mit Überbelegung</div>`;
+  let h='<tr><th>Datum</th>'+M.kids.map(k=>`<th><span class="dot" style="background:${esc(k.farbe)}"></span>${esc(k.name)}</th>`).join('')+'<th>max.</th><th>Hinweis</th></tr>';
+  for(const r of M.rows){
+    if(r.closed){ h+=`<tr class="cl"><td>${WD[r.wd]} ${deShort(r.s)}</td><td colspan="${M.kids.length+2}">geschlossen · ${esc(r.closed)}</td></tr>`; continue; }
+    h+=`<tr class="${r.over.length?'ov':''}"><td style="white-space:nowrap"><b>${WD[r.wd]}</b> ${deShort(r.s)}</td>`+M.kids.map(k=>`<td style="white-space:nowrap">${kidCell(r,k)}</td>`).join('')+`<td><b style="${r.over.length?'color:var(--err)':''}">${r.peak}</b></td><td class="small">${r.over.map(o=>'⚠ '+fmtMin(o.a)+'–'+fmtMin(o.b)+': '+o.peak).join('<br>')}${r.contractsOver?'<br>⚠ '+r.contracts+' Verträge':''}</td></tr>`;
+  }
+  $('#mTable').innerHTML=h;
+}
+$('#mMonth').onchange=renderMonth;
+
+/* ---------- PDF ---------- */
+$('#mPdf').onclick=()=>{ try{ makePdf($('#mMonth').value); }catch(e){ console.error(e); toast('PDF-Fehler: '+e.message,5000); } };
+function makePdf(ym){
+  if(!window.jspdf) { toast('PDF-Bibliothek nicht geladen (Internet nötig)',4000); return; }
+  const {jsPDF}=window.jspdf; const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+  const M=monthModel(ym), [y,mo]=ym.split('-').map(Number), S=D.settings;
+  const W=297,H=210,L=10,R=10; const bord=hexToRgb('#9a2e37'), grn=hexToRgb('#2f4a2e'), txt=hexToRgb('#0F172A'), mut=[91,100,117];
+  const dash=s=>s.replace(/–/g,'-');
+  // Kopf
+  doc.setFillColor(...bord); doc.rect(0,0,W,3,'F');
+  try{ doc.addImage(LOGO,'JPEG',L,6,42,20.7); }catch(e){}
+  doc.setFont('helvetica','bold'); doc.setFontSize(19); doc.setTextColor(...bord); doc.text('Belegungsplan '+MONATE[mo-1]+' '+y,L+48,15);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(...grn); doc.text('Kindertagespflege Wichtelstube Volkertshausen',L+48,20.5);
+  const ownTxt=S.eigeneAnzahl>0?(S.eigeneZaehlen?` inkl. ${S.eigeneAnzahl} eigene${S.eigeneAnzahl>1?'':'s'} Kind${S.eigeneAnzahl>1?'er':''}`:' (eigene Kinder zählen nicht)'):'';
+  doc.setTextColor(...mut); doc.setFontSize(8); doc.text(`Grenze: max. ${S.maxGleichzeitig} Kinder gleichzeitig${ownTxt}  ·  max. ${S.maxVertraege} Betreuungsverhältnisse  ·  `+(filterTerms().length?'Filter: '+filterTerms().join(', ')+'  ·  ':'')+'Stand: '+de(today()),L+48,25.5);
+  // Legende rechts
+  const lg=[['#a9cf9a','Plätze frei'],['#5d9a5b','1 Platz frei'],['#e9a23b','voll'],['#d11f2f','Überbelegung']]; let lx=W-R-30;
+  doc.setFontSize(7.5); lg.forEach(([c,t],i)=>{ doc.setFillColor(...hexToRgb(c)); doc.rect(lx,7+i*4.6,3.6,3,'F'); doc.setTextColor(...txt); doc.text(t,lx+5,9.4+i*4.6); });
+  // Spalten
+  const top=32, foot=12; const nK=M.kids.length;
+  const wDate=19, wMax=11; let wBand = nK<=6?92:nK<=10?72:56;
+  let wKid = nK? (W-L-R-wDate-wMax-wBand)/nK : 0;
+  if(!nK) wBand=W-L-R-wDate-wMax;
+  const xKid=L+wDate, xMax=xKid+wKid*nK, xBand=xMax+wMax;
+  const rows=M.rows, hHead=10; const avail=H-top-hHead-foot; const rh=Math.min(7.2,avail/Math.max(rows.length,1));
+  const [A,B]=M.rng; const bx=m=>xBand+(m-A)/(B-A)*wBand;
+  // Kopfzeile
+  doc.setFillColor(248,240,241); doc.rect(L,top,W-L-R,hHead,'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(...txt);
+  doc.text('Datum',L+1.5,top+6.2);
+  M.kids.forEach((k,i)=>{ const x=xKid+i*wKid; doc.setFillColor(...hexToRgb(k.farbe)); doc.rect(x+1,top+hHead-2,wKid-2,1.3,'F');
+    let n=k.name; doc.setFontSize(nK>10?7:8); while(doc.getTextWidth(n)>wKid-2&&n.length>2) n=n.slice(0,-1); doc.text(n,x+wKid/2,top+5.5,{align:'center'}); });
+  doc.setFontSize(8); doc.text('max.',xMax+wMax/2,top+6.2,{align:'center'});
+  doc.setFont('helvetica','normal'); doc.setFontSize(6.5); doc.setTextColor(...mut);
+  const step=(B-A)/60>10?120:60;
+  for(let m=A;m<=B;m+=step){ doc.text(String(m/60),bx(m),top+6.2,{align:'center'}); }
+  // Zeilen
+  let yy=top+hHead; const cellFs = wKid<15?6:wKid<19?6.8:7.5;
+  rows.forEach((r,ri)=>{
+    const mon = r.wd===1 && ri>0;
+    if(mon){ doc.setDrawColor(...bord); doc.setLineWidth(0.35); doc.line(L,yy,W-R,yy); }
+    if(r.closed){
+      doc.setFillColor(242,238,238); doc.rect(L,yy,W-L-R,rh,'F');
+      doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(...mut); doc.text(WD[r.wd]+' '+deShort(r.s),L+1.5,yy+rh/2+1.2);
+      doc.setFont('helvetica','italic'); doc.text('geschlossen - '+dash(r.closed),xKid+2,yy+rh/2+1.2);
+    } else {
+      if(r.over.length){ doc.setFillColor(255,236,238); doc.rect(L,yy,W-L-R,rh,'F'); }
+      else if(isoWeek(parseISO(r.s))%2===0){ doc.setFillColor(252,249,249); doc.rect(L,yy,W-L-R,rh,'F'); }
+      doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(...txt); doc.text(WD[r.wd],L+1.5,yy+rh/2+1.2);
+      doc.setFont('helvetica','normal'); doc.text(deShort(r.s),L+7,yy+rh/2+1.2);
+      M.kids.forEach((k,i)=>{ const c=kidCell(r,k); if(!c) return; const x=xKid+i*wKid; const rgb=hexToRgb(k.farbe);
+        doc.setFillColor(...rgb.map(v=>Math.round(v+(255-v)*0.82))); doc.roundedRect(x+0.6,yy+0.6,wKid-1.2,rh-1.2,1,1,'F');
+        doc.setFontSize(cellFs); doc.setTextColor(...rgb.map(v=>Math.round(v*0.6)));
+        let t=dash(c); if(doc.getTextWidth(t)>wKid-1.6){ t=t.replace(/:00/g,''); } doc.text(t,x+wKid/2,yy+rh/2+1.1,{align:'center'}); });
+      doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(...(r.peak>r.limit?hexToRgb('#d11f2f'):txt)); doc.text(String(r.peak),xMax+wMax/2,yy+rh/2+1.2,{align:'center'});
+      // Belegungsband
+      for(let m=A;m<B;m+=15){ let n=0; for(let k=m;k<m+15;k++) n=Math.max(n,r.total[k]); const c=occColor(n,r.limit); if(!c) continue;
+        doc.setFillColor(...hexToRgb(c)); doc.rect(bx(m)+0.1,yy+1,bx(m+15)-bx(m)-0.2,rh-2,'F');
+        if(bx(m+15)-bx(m)>2.6){ doc.setFontSize(5.5); doc.setTextColor(255,255,255); doc.text(String(n),(bx(m)+bx(m+15))/2,yy+rh/2+0.9,{align:'center'}); } }
+      for(const o of r.over){ doc.setDrawColor(209,31,47); doc.setLineWidth(0.5); doc.rect(bx(Math.max(o.a,A)),yy+0.5,bx(Math.min(o.b,B))-bx(Math.max(o.a,A)),rh-1); }
+    }
+    doc.setDrawColor(235,226,227); doc.setLineWidth(0.15); doc.line(L,yy+rh,W-R,yy+rh);
+    yy+=rh;
+  });
+  // vertikale Linien
+  doc.setDrawColor(225,214,215); doc.setLineWidth(0.15);
+  [xKid,...M.kids.map((k,i)=>xKid+(i+1)*wKid),xBand].forEach(x=>doc.line(x,top,x,yy));
+  for(let m=A+60;m<B;m+=60){ doc.setDrawColor(240,232,232); doc.line(bx(m),top+hHead,bx(m),yy); }
+  // Fuß
+  const ovDays=rows.filter(r=>r.over.length||r.contractsOver);
+  doc.setFontSize(7.5); doc.setFont('helvetica','normal'); doc.setTextColor(...mut);
+  doc.text('Grundlage: VwV Kindertagespflege BW Nr. 1.2 b (max. 5 fremde Kinder gleichzeitig, max. 10 Betreuungsverhältnisse) bzw. individuelle Pflegeerlaubnis. Belegungsband: Anzahl gleichzeitig anwesender Kinder je 15 min (alle Kinder, unabhängig vom Filter).',L,H-6,{maxWidth:W-L-R-30});
+  if(ovDays.length){ doc.setFont('helvetica','bold'); doc.setTextColor(209,31,47); doc.text('Achtung: Überbelegung an '+ovDays.length+' Tag(en) - Details Seite 2',L,H-9.5); }
+  doc.setTextColor(...mut); doc.setFont('helvetica','normal'); doc.text('Seite 1',W-R,H-6,{align:'right'});
+  // Seite 2: Hinweise
+  if(ovDays.length){
+    doc.addPage(); doc.setFillColor(...bord); doc.rect(0,0,W,3,'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.setTextColor(...bord); doc.text('Überbelegungen '+MONATE[mo-1]+' '+y,L,15);
+    let yp=24; doc.setFontSize(9);
+    for(const r of ovDays){
+      for(const o of r.over){ if(yp>H-14){ doc.addPage(); yp=16; }
+        doc.setFont('helvetica','bold'); doc.setTextColor(209,31,47); doc.text(`${WD_LONG[r.wd]}, ${de(r.s)}  ${fmtMin(o.a)}-${fmtMin(o.b)}:  ${o.peak} Kinder (Grenze ${r.limit})`,L,yp);
+        doc.setFont('helvetica','normal'); doc.setTextColor(...txt); doc.text(o.names.join(', ')+(o.own?`  + ${o.own} eigene${o.own>1?'':'s'}`:''),L+110,yp,{maxWidth:W-L-R-110}); yp+=6; }
+      if(r.contractsOver){ doc.setTextColor(209,31,47); doc.text(`${WD_LONG[r.wd]}, ${de(r.s)}: ${r.contracts} Betreuungsverhältnisse (max. ${S.maxVertraege})`,L,yp); yp+=6; }
+    }
+    doc.setFontSize(7.5); doc.setTextColor(...mut); doc.text('Seite 2',W-R,H-6,{align:'right'});
+  }
+  doc.save(`Belegungsplan_${ym}.pdf`);
+  toast('PDF erzeugt');
+}
+
+/* ---------- Warnungen ---------- */
+function renderWarn(){
+  const w=computeWarnings();
+  $('#warnRange').textContent=`Geprüft: ${de(w.from)} bis ${de(w.to)} · Grenze ${D.settings.maxGleichzeitig} gleichzeitig${D.settings.eigeneAnzahl>0&&D.settings.eigeneZaehlen?' inkl. '+D.settings.eigeneAnzahl+' eigene':''} · ${D.settings.maxVertraege} Verträge · Schließtage ausgenommen`;
+  if(!w.groups.length && !w.vert.length){ $('#warnBody').innerHTML='<div class="alert ok"><h3>✓ Keine Überbelegung</h3>Im Prüfzeitraum wird die Grenze an keinem Tag überschritten.</div>'; return; }
+  let h=`<div class="alert err"><h3>⚠ ${w.count} Überschreitung(en) der gleichzeitigen Betreuung${w.vert.length?' und zu viele Betreuungsverhältnisse':''}</h3>Betroffene Kinder sind unter „Kinder &amp; Zeiten“ rot markiert.</div>`;
+  for(const v of w.vert) h+=`<div class="conf"><b>${v.n} Betreuungsverhältnisse</b> (max. ${D.settings.maxVertraege}) · ${de(v.from)}${v.to!==v.from?' – '+de(v.to):''}</div>`;
+  h+=w.groups.map(g=>confHTML(g,false)).join('');
+  $('#warnBody').innerHTML=h;
+}
+
+/* ---------- Einstellungen ---------- */
+const sMap={sMax:'maxGleichzeitig',sVert:'maxVertraege',sOwn:'eigeneAnzahl',sOwnS:'eigeneStart',sOwnE:'eigeneEnde',sOwnFrom:'eigeneAb',sOwnTo:'eigeneBis',sDayS:'tagStart',sDayE:'tagEnde'};
+function renderSettings(){
+  const S=D.settings;
+  for(const [id,k] of Object.entries(sMap)) $('#'+id).value=S[k]??'';
+  $('#sOwnCount').checked=!!S.eigeneZaehlen; $('#sHol').checked=!!S.feiertage;
+  $('#sOwnDays').innerHTML=WD_ORDER.map(d=>`<label class="${S.eigeneTage.includes(d)?'on':''}"><input type="checkbox" value="${d}" ${S.eigeneTage.includes(d)?'checked':''}>${WD[d]}</label>`).join('');
+  $('#zList').innerHTML = D.schliesszeiten.length? '<tr><th>von</th><th>bis</th><th>Bezeichnung</th><th></th></tr>'+[...D.schliesszeiten].sort((a,b)=>a.von.localeCompare(b.von)).map(z=>`<tr><td>${de(z.von)}</td><td>${de(z.bis||z.von)}</td><td>${esc(z.titel)}</td><td style="text-align:right"><button class="btn ghost" data-z="${z.id}">🗑</button></td></tr>`).join('') : '<tr><td class="muted">keine Schließzeiten eingetragen</td></tr>';
+  $('#gOwner').value=GH.owner; $('#gRepo').value=GH.repo; $('#gBranch').value=GH.branch; $('#gPath').value=GH.path; $('#gToken').value=GH.token; $('#gAuto').checked=GH.auto;
+  $('#dInfo').textContent=`${D.kinder.length} Kinder · ${D.kinder.reduce((n,k)=>n+k.regeln.length,0)} Regeln · zuletzt geändert: ${D.updated?new Date(D.updated).toLocaleString('de-DE'):'–'}`;
+}
+for(const [id,k] of Object.entries(sMap)) $('#'+id).addEventListener('change',e=>{ let v=e.target.value; if(e.target.type==='number') v=Math.max(0,parseInt(v||0,10)); D.settings[k]=v; commit('Einstellung gespeichert'); });
+$('#sOwnCount').onchange=e=>{ D.settings.eigeneZaehlen=e.target.checked; commit('Einstellung gespeichert'); };
+$('#sHol').onchange=e=>{ D.settings.feiertage=e.target.checked; commit('Einstellung gespeichert'); };
+$('#sOwnDays').addEventListener('change',()=>{ D.settings.eigeneTage=[...document.querySelectorAll('#sOwnDays input:checked')].map(i=>+i.value); commit('Einstellung gespeichert'); });
+$('#zAdd').onclick=()=>{ const v=$('#zFrom').value, b=$('#zTo').value||v; if(!v) return toast('„von“ fehlt'); if(b<v) return toast('„bis“ vor „von“');
+  D.schliesszeiten.push({id:uid(),von:v,bis:b,titel:$('#zTitle').value.trim()||'Schließzeit'}); $('#zFrom').value=$('#zTo').value=$('#zTitle').value=''; commit('Schließzeit eingetragen'); };
+$('#zList').addEventListener('click',e=>{ const b=e.target.closest('[data-z]'); if(b){ D.schliesszeiten=D.schliesszeiten.filter(z=>z.id!==b.dataset.z); commit('Schließzeit gelöscht'); } });
+$('#dExp').onclick=()=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(D,null,2)],{type:'application/json'})); a.download='belegung_'+today()+'.json'; a.click(); };
+$('#dImp').onchange=async e=>{ const f=e.target.files[0]; if(!f) return; try{ const d=normalize(JSON.parse(await f.text())); if(confirm('Aktuelle Daten durch Import ersetzen?')){ D=d; commit('Import übernommen'); } }catch(err){ toast('Ungültige Datei'); } e.target.value=''; };
+$('#dReset').onclick=()=>{ if(confirm('Wirklich ALLE Kinder, Regeln und Schließzeiten löschen?')&&confirm('Sicher? Das wird bei aktiver Synchronisation auch auf GitHub gespeichert.')){ D=defaultData(); commit('Alles gelöscht'); } };
+$('#dDemo').onclick=()=>{ if(D.kinder.length && !confirm('Vorhandene Daten durch Beispieldaten ersetzen?')) return;
+  const y=new Date().getFullYear(), t=today(), e=addMonths(t,10);
+  D=normalize({settings:{...D.settings,eigeneAnzahl:1,eigeneZaehlen:true,eigeneTage:[1,2,3,4,5],eigeneStart:'07:00',eigeneEnde:'08:00'},
+    kinder:[
+      {name:'Mia',farbe:PALETTE[0],regeln:[{von:t,bis:e,tage:[1,2,3],start:'07:00',ende:'12:30'}]},
+      {name:'Ben',farbe:PALETTE[1],regeln:[{von:t,bis:e,tage:[1,2,3,4,5],start:'07:30',ende:'14:00'}]},
+      {name:'Lena',farbe:PALETTE[2],regeln:[{von:t,bis:e,tage:[1,3,5],start:'08:00',ende:'16:00'}]},
+      {name:'Paul',farbe:PALETTE[3],regeln:[{von:t,bis:'',tage:[2,4],start:'07:00',ende:'13:00'},{von:t,bis:'',tage:[1],start:'07:45',ende:'12:00'}]},
+      {name:'Emma',farbe:PALETTE[4],regeln:[{von:addMonths(t,1),bis:e,tage:[1,2],start:'11:30',ende:'15:30'}]}],
+    schliesszeiten:[{von:y+'-12-24',bis:(y+1)+'-01-06',titel:'Weihnachtsferien'}]});
+  commit('Beispieldaten geladen');
+};
+
+/* ---------- GitHub-Sync ---------- */
+function ghSet(){ GH={owner:$('#gOwner').value.trim(),repo:$('#gRepo').value.trim(),branch:$('#gBranch').value.trim()||'main',path:$('#gPath').value.trim()||'daten/belegung.json',token:$('#gToken').value.trim(),auto:$('#gAuto').checked}; try{localStorage.setItem(LS_GH,JSON.stringify(GH));}catch(e){} updatePill(); }
+['gOwner','gRepo','gBranch','gPath','gToken','gAuto'].forEach(id=>$('#'+id).addEventListener('change',ghSet));
+const ghOk=()=>GH.owner&&GH.repo&&GH.token;
+const ghUrl=()=>`https://api.github.com/repos/${encodeURIComponent(GH.owner)}/${encodeURIComponent(GH.repo)}/contents/${GH.path.split('/').map(encodeURIComponent).join('/')}`;
+const ghHead=()=>({'Authorization':'Bearer '+GH.token,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'});
+const b64enc=s=>{ const b=new TextEncoder().encode(s); let x=''; for(let i=0;i<b.length;i+=0x8000) x+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000)); return btoa(x); };
+const b64dec=s=>new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\s/g,'')),c=>c.charCodeAt(0)));
+function gMsg(t,cls){ $('#gMsg').innerHTML=`<span style="color:${cls==='err'?'var(--err)':cls==='ok'?'var(--ok)':'inherit'}">${t}</span>`; }
+let syncState='lokal';
+function updatePill(state){ if(state) syncState=state; const p=$('#syncPill');
+  const map={lokal:['● nur lokal',''],ok:['● mit GitHub synchron','ok'],dirty:['● ungespeicherte Änderungen',''],busy:['● speichere …',''],err:['● Sync-Fehler','']};
+  const s=ghOk()?syncState:'lokal'; const [t,c]=map[s]||map.lokal; p.textContent=t; p.className='pill '+c; p.style.color=s==='err'?'var(--err)':s==='dirty'?'var(--warn)':''; p.title=ghOk()?GH.owner+'/'+GH.repo+'/'+GH.path:'GitHub in den Einstellungen einrichten'; }
+async function ghGet(){ const r=await fetch(ghUrl()+'?ref='+encodeURIComponent(GH.branch)+'&t='+Date.now(),{headers:ghHead(),cache:'no-store'}); if(r.status===404) return null; if(!r.ok) throw new Error(r.status+' '+(await r.json().catch(()=>({}))).message); const j=await r.json(); return {sha:j.sha,data:normalize(JSON.parse(b64dec(j.content)))}; }
+async function ghPut(force){
+  let sha=META.sha;
+  if(force){ const cur=await ghGet(); sha=cur?cur.sha:undefined; }
+  const body={message:'Belegung aktualisiert '+new Date().toLocaleString('de-DE'),content:b64enc(JSON.stringify(D,null,2)),branch:GH.branch}; if(sha) body.sha=sha;
+  const r=await fetch(ghUrl(),{method:'PUT',headers:{...ghHead(),'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(r.status===409||r.status===422){ const e=new Error('conflict'); e.conflict=true; throw e; }
+  if(!r.ok) throw new Error(r.status+' '+(await r.json().catch(()=>({}))).message);
+  const j=await r.json(); META.sha=j.content.sha; META.dirty=false; saveMeta();
+}
+async function syncSave(manual){
+  if(!ghOk()){ if(manual) toast('GitHub ist nicht eingerichtet'); return; }
+  updatePill('busy');
+  try{ await ghPut(false); updatePill('ok'); if(manual) gMsg('✓ gespeichert','ok'); }
+  catch(e){
+    if(e.conflict){
+      const remote=await ghGet().catch(()=>null);
+      const keepMine=confirm('Die Daten auf GitHub wurden inzwischen von einem anderen Gerät geändert'+(remote&&remote.data.updated?' ('+new Date(remote.data.updated).toLocaleString('de-DE')+')':'')+'.\n\nOK = MEINE Version speichern (überschreibt GitHub)\nAbbrechen = Version von GitHub laden (meine letzten Änderungen verwerfen)');
+      try{ if(keepMine){ await ghPut(true); updatePill('ok'); toast('Deine Version wurde gespeichert'); }
+        else if(remote){ D=remote.data; META.sha=remote.sha; META.dirty=false; saveMeta(); try{localStorage.setItem(LS_DATA,JSON.stringify(D));}catch(_){} invalidate(); renderAll(); updatePill('ok'); toast('Version von GitHub geladen'); } }
+      catch(e2){ updatePill('err'); gMsg('Fehler: '+esc(e2.message),'err'); }
+    } else { updatePill('err'); gMsg('Fehler beim Speichern: '+esc(e.message)+' – Token/Repo prüfen.','err'); if(!manual) toast('⚠ Speichern auf GitHub fehlgeschlagen – lokal gesichert',4000); }
+  }
+}
+let syncT=null;
+function scheduleSync(){ updatePill('dirty'); if(!ghOk()||!GH.auto) return; clearTimeout(syncT); syncT=setTimeout(()=>syncSave(false),2500); }
+async function syncLoad(manual){
+  if(!ghOk()) return;
+  updatePill('busy');
+  try{ const r=await ghGet();
+    if(!r){ updatePill('dirty'); if(manual) gMsg('Datei existiert noch nicht – wird beim ersten Speichern angelegt.'); return; }
+    if(!manual && META.dirty && r.sha!==META.sha){
+      if(!confirm('Auf GitHub liegt eine andere Version ('+r.data.kinder.length+' Kinder), hier gibt es nicht gespeicherte Änderungen ('+D.kinder.length+' Kinder).\n\nOK = GitHub-Version laden\nAbbrechen = lokale Version behalten und auf GitHub speichern')){ META.sha=r.sha; saveMeta(); scheduleSync(); return; } }
+    else if(!manual && META.dirty && r.sha===META.sha){ updatePill('dirty'); scheduleSync(); return; }
+    D=r.data; META.sha=r.sha; META.dirty=false; saveMeta(); try{localStorage.setItem(LS_DATA,JSON.stringify(D));}catch(_){}
+    invalidate(); renderAll(); updatePill('ok'); if(manual) gMsg('✓ geladen ('+D.kinder.length+' Kinder)','ok');
+  }catch(e){ updatePill('err'); gMsg('Fehler beim Laden: '+esc(e.message),'err'); if(!manual) toast('⚠ GitHub nicht erreichbar – lokale Daten werden angezeigt',4000); }
+}
+$('#gTest').onclick=async()=>{ ghSet(); if(!ghOk()) return gMsg('Besitzer, Repository und Token ausfüllen','err');
+  try{ const r=await fetch(`https://api.github.com/repos/${encodeURIComponent(GH.owner)}/${encodeURIComponent(GH.repo)}`,{headers:ghHead()}); const j=await r.json();
+    if(!r.ok) return gMsg('✕ '+r.status+' '+esc(j.message)+(r.status===404?' – Repo-Name falsch oder Token hat keinen Zugriff':''),'err');
+    gMsg(`✓ Verbunden mit <b>${esc(j.full_name)}</b> · ${j.private?'privat 🔒':'<b style="color:var(--err)">ÖFFENTLICH – bitte auf privat stellen!</b>'} · Schreibrecht: ${j.permissions&&j.permissions.push?'ja':'unklar (Token-Rechte prüfen)'}`, j.private?'ok':'err');
+  }catch(e){ gMsg('✕ '+esc(e.message),'err'); } };
+$('#gLoad').onclick=()=>{ ghSet(); if(!META.dirty||confirm('Lokale Daten durch GitHub-Version ersetzen?')) syncLoad(true); };
+$('#gSave').onclick=()=>{ ghSet(); syncSave(true); };
+
+/* ---------- Filter & Start ---------- */
+$('#filter').addEventListener('input',()=>{ renderTab(); });
+$('#filterX').onclick=()=>{ $('#filter').value=''; renderTab(); };
+window.addEventListener('beforeunload',e=>{ if(META.dirty&&ghOk()){ e.preventDefault(); e.returnValue=''; } });
+try{ const t=localStorage.getItem('wichtelstube.tab'); if(t&&document.querySelector(`nav.tabs button[data-tab=${t}]`)) document.querySelector(`nav.tabs button[data-tab=${t}]`).click(); }catch(e){}
+renderAll(); updatePill(META.dirty?'dirty':'ok'); syncLoad(false);
+</script>
+</body>
+</html>
